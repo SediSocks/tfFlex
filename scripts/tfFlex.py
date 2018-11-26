@@ -10,6 +10,8 @@ import maya.cmds as cmds
 
 
 def createUI():
+
+    version = cmds.about(v=True)
     mainWindow = 'mainWindowID'
 
     if cmds.window(mainWindow, exists=True):
@@ -18,24 +20,29 @@ def createUI():
     window = cmds.window(mainWindow, title="tfFlex", tlb=True, s=False)
     form = cmds.formLayout(numberOfDivisions=100)
 
-    # Creating Element createWrap
+    #createWrap
     object = cmds.checkBox('wrapButton', w=147, h=34, v=True, l="Create Wrap Deformer")
     cmds.formLayout(form, edit=True, attachForm=[(object, 'top', 59), (object, 'left', 18)])
-    # =========================================
-    # Creating Element description
+
+    #description
     object = cmds.text(label="Select the item to be flexed first, then the base head.", ww=True, w=137, h=40)
     cmds.formLayout(form, edit=True, attachForm=[(object, 'top', 14), (object, 'left', 18)])
-    # =========================================
-    # Creating Element createDeltaMush
-    object = cmds.checkBox('deltaButton', w=147, h=34, v=False, l="Create DeltaMush",
-                           ann="Smooths out the resulting flexes, useful for beards etc.")
-    cmds.formLayout(form, edit=True, attachForm=[(object, 'top', 79), (object, 'left', 18)])
-    # =========================================
-    # Creating Element flexButton
+
+    #createDeltaMush
+    if float(version) < 2016.0:
+        object = cmds.checkBox('deltaButton', w=147, h=34, v=False, ed=False, l="Create DeltaMush",
+                               ann="Smooths out the resulting flexes, useful for beards etc. Requires Maya 2016 or higher")
+        cmds.formLayout(form, edit=True, attachForm=[(object, 'top', 79), (object, 'left', 18)])
+    elif float(version) >= 2016.0:
+        object = cmds.checkBox('deltaButton', w=147, h=34, v=False, l="Create DeltaMush",
+                               ann="Smooths out the resulting flexes, useful for beards etc.")
+        cmds.formLayout(form, edit=True, attachForm=[(object, 'top', 79), (object, 'left', 18)])
+
+    #flexButton
     object = cmds.button(label="Flex!", c=flex, w=113, h=34)
     cmds.formLayout(form, edit=True, attachForm=[(object, 'top', 120), (object, 'left', 31)])
-    # =========================================
-    # Creating Element addtoshelf
+
+    #addtoshelf
     object = cmds.button(label="Add to Shelf", c=tfFlexButton, w=75, h=24)
     cmds.formLayout(form, edit=True, attachForm=[(object, 'top', 160), (object, 'left', 50)])
     # =========================================
@@ -47,14 +54,26 @@ def createUI():
 
 def flex(self):
     selection = cmds.ls(sl=True)
+
+    #create errors
+    if len(selection) == 0:
+        cmds.error("Nothing selected, first select the item to be flexed, then hold shift and select the base head")
+    elif len(selection) == 1:
+        cmds.error("Only 1 object selected, first select the item to be flexed, then hold shift and select the base head")
+    elif len(selection) > 2:
+        cmds.error("More than 2 objects selected, first select the item to be flexed, then hold shift and select the base head")
+
     beard = selection[0]
     head = selection[1]
 
+    #create wrap deformer if box ticked
     if cmds.checkBox('wrapButton', q=1, v=True):
          cmds.CreateWrap()
 
+    #group the beard mesh so its nice and tidy
     cmds.group(beard)
 
+    #create deltamush deformer if box ticked
     if cmds.checkBox('deltaButton', q=1, v=True):
         cmds.deltaMush(smoothingIterations=20, smoothingStep=0.8)
 
@@ -81,7 +100,9 @@ def flex(self):
         cmds.select(item)
         cmds.select(item + "_head", add=True)
 
+        #move them off to the side
         cmds.move(i, 0, 0, r=True)
+
         previous = item
         cmds.setAttr(blndShape[0] + "." + previous, 0)
 
